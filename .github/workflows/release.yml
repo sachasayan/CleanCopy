@@ -18,17 +18,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Install create-dmg dependency (required by 'make package')
+      # 2. Set up temporary keychain and import certificate
+      - name: Set up keychain and import certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          KEYCHAIN_NAME: build.keychain # Temporary keychain name
+        run: |
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          # Make the temporary keychain the default
+          security default-keychain -s "$KEYCHAIN_NAME"
+          # Unlock the temporary keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          # Set keychain timeout to prevent locking during build
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
+
+          # Decode the base64 certificate
+          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+
+          # Import the certificate into the keychain
+          security import certificate.p12 -k "$KEYCHAIN_NAME" -P "$P12_PASSWORD" -T /usr/bin/codesign
+
+          # Clean up the certificate file
+          rm -f certificate.p12
+
+          echo "Keychain setup complete."
+
+      # 3. Install create-dmg dependency (required by 'make package')
       - name: Install create-dmg
         run: brew install create-dmg
 
-      # 3. Build the Release configuration and package the DMG
-      #    Uses the updated Makefile which now accepts CONFIG=Release
-      #    The output DMG will be CleanCopy-Release.dmg
+      # 4. Build the Release configuration, package, and sign the DMG
+      #    Makefile will now use the certificate imported into the temporary keychain
       - name: Build and Package Release DMG
         run: make package CONFIG=Release
 
-      # 4. Create a Draft GitHub Release and upload the DMG
+      # 5. Create a Draft GitHub Release and upload the DMG
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -45,5 +72,11 @@ jobs:
             dmg-resources/LICENSE.txt # Also include the license file
         env:
           # The GITHUB_TOKEN is automatically provided by GitHub Actions
-          # It's needed by the action to interact with the repository's releases
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 6. Cleanup: Delete temporary keychain (optional, runs even if previous steps fail)
+      - name: Cleanup Keychain
+        if: always() # Ensure cleanup runs even if the build fails
+        run: |
+          KEYCHAIN_NAME=build.keychain
+          security delete-keychain "$KEYCHAIN_NAME" || echo "Keychain cleanup failed or keychain did not exist."
