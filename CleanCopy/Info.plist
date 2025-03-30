@@ -21,12 +21,20 @@
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
+    <string>14.0</string> <!-- Note: SMAppService requires macOS 13+. Consider updating this if needed. -->
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2025 Interim Solutions. All rights reserved.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
+    <key>SMAppService</key>
+    <dict>
+        <key>LoginItem</key>
+        <dict>
+            <key>Identifier</key>
+            <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+        </dict>
+    </dict>
 </dict>
 </plist>

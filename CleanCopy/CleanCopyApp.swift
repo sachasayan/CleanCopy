@@ -2,13 +2,20 @@ import AppKit
 import SwiftUI
 // Removed: import Cocoa - Redundant as AppKit includes Cocoa
 import UserNotifications
+import ServiceManagement // Import the ServiceManagement framework
 
 /// AppDelegate handles application lifecycle events, specifically setting the app policy.
 class AppDelegate: NSObject, NSApplicationDelegate {
+
+    let loginItemPromptShownKey = "loginItemPromptShown" // UserDefaults key
+    let moveToApplicationsPromptShownKey = "moveToApplicationsPromptShown" // UserDefaults key
+
     /// Sets the application's activation policy to `.accessory` upon launch,
     /// making it a background/menu bar application without a Dock icon or main window by default.
+    /// Also prompts the user to add the app as a login item and move to Applications on first launch.
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+
         // Request notification permissions and set delegate
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
@@ -16,7 +23,163 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 print("Notification permission error: \(error.localizedDescription)")
             }
         }
+
+        // Run first-launch checks sequentially
+        DispatchQueue.main.async { // Ensure UI operations are on the main thread
+            self.promptToMoveToApplicationsIfNeeded { // Completion handler ensures prompts don't overlap
+                self.promptForLoginItemIfNeeded()
+            }
+        }
     }
+
+    // --- Move to Applications Logic ---
+
+    /// Checks if the app is in the Applications folder and prompts to move if not (on first launch).
+    /// - Parameter completion: A closure called after the check/prompt is complete.
+    private func promptToMoveToApplicationsIfNeeded(completion: @escaping () -> Void) {
+        guard !UserDefaults.standard.bool(forKey: moveToApplicationsPromptShownKey) else {
+            completion() // Already shown or handled, proceed to next step
+            return
+        }
+
+        // Mark as shown immediately
+        UserDefaults.standard.set(true, forKey: moveToApplicationsPromptShownKey)
+
+        let fileManager = FileManager.default
+        guard let applicationsURL = fileManager.urls(for: .applicationDirectory, in: .localDomainMask).first else {
+            print("Could not find Applications directory.")
+            completion()
+            return
+        }
+
+        let appURL = Bundle.main.bundleURL
+        let appName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "CleanCopy"
+
+        // Check if the app is already in the main /Applications directory
+        if appURL.deletingLastPathComponent() == applicationsURL {
+            print("App is already in Applications directory.")
+            completion()
+            return
+        }
+
+        // App is not in /Applications, show the prompt
+        let alert = NSAlert()
+        alert.messageText = "Move \(appName) to Applications?"
+        alert.informativeText = "To ensure \(appName) works correctly and can be easily found, it's recommended to run it from your Applications folder.\n\nWould you like to copy it there now?"
+        alert.addButton(withTitle: "Yes, Copy to Applications") // First button
+        alert.addButton(withTitle: "No")                     // Second button
+        alert.alertStyle = .informational
+
+        let response = alert.runModal()
+
+        if response == .alertFirstButtonReturn { // User clicked "Yes"
+            copyAppToApplications(from: appURL, to: applicationsURL.appendingPathComponent(appURL.lastPathComponent))
+        }
+        completion() // Call completion regardless of user choice after prompt
+    }
+
+    /// Attempts to copy the application bundle to the /Applications directory.
+    private func copyAppToApplications(from sourceURL: URL, to destinationURL: URL) {
+        let fileManager = FileManager.default
+        do {
+            // Check if it already exists at the destination
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                // Optionally ask to replace or just inform
+                let replaceAlert = NSAlert()
+                replaceAlert.messageText = "Application Already Exists"
+                replaceAlert.informativeText = "\(destinationURL.lastPathComponent) already exists in Applications. Do you want to replace it?"
+                replaceAlert.addButton(withTitle: "Replace")
+                replaceAlert.addButton(withTitle: "Cancel")
+                if replaceAlert.runModal() == .alertFirstButtonReturn {
+                    try fileManager.removeItem(at: destinationURL) // Remove existing before copy
+                } else {
+                    showPostCopyAlert(success: false, error: nil, destinationPath: destinationURL.path) // Show failure (cancelled)
+                    return
+                }
+            }
+
+            // Perform the copy
+            try fileManager.copyItem(at: sourceURL, to: destinationURL)
+            showPostCopyAlert(success: true, error: nil, destinationPath: destinationURL.path)
+
+        } catch {
+            print("Failed to copy app to Applications: \(error)")
+            showPostCopyAlert(success: false, error: error, destinationPath: destinationURL.path)
+        }
+    }
+
+    /// Shows an alert after the copy attempt.
+    private func showPostCopyAlert(success: Bool, error: Error?, destinationPath: String) {
+        let alert = NSAlert()
+        if success {
+            alert.messageText = "Application Copied Successfully"
+            alert.informativeText = "\(Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "CleanCopy") has been copied to your Applications folder.\n\nPlease launch the new copy from Applications and quit this version."
+            alert.addButton(withTitle: "Open Applications Folder")
+            alert.addButton(withTitle: "OK")
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/"))
+            }
+            // Consider quitting the current app instance here after a delay,
+            // but it might be better to let the user do it explicitly.
+            // DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            //     NSApp.terminate(nil)
+            // }
+        } else {
+            alert.messageText = "Failed to Copy Application"
+            alert.informativeText = "Could not copy \(Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "CleanCopy") to the Applications folder.\n\nError: \(error?.localizedDescription ?? "Unknown error")\n\nYou may need to move it manually."
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+
+
+    // --- Login Item Logic ---
+
+    /// Checks if the login item prompt has been shown before, and if not, shows it.
+    private func promptForLoginItemIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: loginItemPromptShownKey) else {
+            return // Already shown, do nothing
+        }
+        UserDefaults.standard.set(true, forKey: loginItemPromptShownKey)
+
+        let alert = NSAlert()
+        alert.messageText = "Launch CleanCopy at Login?"
+        alert.informativeText = "Would you like CleanCopy to start automatically when you log in?"
+        alert.addButton(withTitle: "Yes, Launch at Login") // First button (default action)
+        alert.addButton(withTitle: "No")                  // Second button
+        alert.alertStyle = .informational
+
+        let response = alert.runModal()
+
+        if response == .alertFirstButtonReturn { // User clicked "Yes"
+            self.registerAsLoginItem()
+        }
+    }
+
+    /// Registers the application as a login item using SMAppService.
+    private func registerAsLoginItem() {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "interimSolutions.CleanCopy" // Fallback just in case
+        do {
+            let service = SMAppService.loginItem(identifier: bundleIdentifier)
+            try service.register()
+            print("Successfully registered \(bundleIdentifier) as a login item.")
+        } catch {
+            print("Failed to register \(bundleIdentifier) as a login item: \(error.localizedDescription)")
+            // Optionally, inform the user about the failure
+        }
+    }
+
+    // Optional: Add code to unregister when the app quits or based on user preference
+    // func applicationWillTerminate(_ notification: Notification) {
+    //     let bundleIdentifier = Bundle.main.bundleIdentifier ?? "interimSolutions.CleanCopy"
+    //     do {
+    //         let service = SMAppService.loginItem(identifier: bundleIdentifier)
+    //         try service.unregister()
+    //         print("Successfully unregistered \(bundleIdentifier) as a login item.")
+    //     } catch {
+    //         print("Failed to unregister \(bundleIdentifier) as a login item: \(error.localizedDescription)")
+    //     }
+    // }
 }
 
 /// Extension to handle User Notification Center delegate methods.
