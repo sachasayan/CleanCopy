@@ -1,6 +1,8 @@
 # CleanCopy
 
-![CleanCopy Icon](CleanCopy/Assets.xcassets/AppIcon.iconset/icon_256x256.png)
+<p align="center">
+  <img src="CleanCopy/Assets.xcassets/AppIcon.iconset/icon_256x256.png" alt="CleanCopy Icon">
+</p>
 
 CleanCopy is a simple macOS utility designed to help manage and clean up clipboard history or temporary files. (Please update this description with the actual app details).
 
