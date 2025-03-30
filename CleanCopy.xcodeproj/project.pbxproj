@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		991F94F82D35F44100D585BB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 991F94F92D35F44100D585BB /* Assets.xcassets */; };
 		991F94FA2D35F44100D585BB /* CleanCopyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 991F94FB2D35F44100D585BB /* CleanCopyApp.swift */; };
+		997544CF2D99350000C5567C /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 997544CE2D99350000C5567C /* ServiceManagement.framework */; settings = {ATTRIBUTES = (Required, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -16,6 +17,7 @@
 		991F94F92D35F44100D585BB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = CleanCopy/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 		991F94FB2D35F44100D585BB /* CleanCopyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CleanCopyApp.swift; path = CleanCopy/CleanCopyApp.swift; sourceTree = SOURCE_ROOT; };
 		991F94FF2D35F44100D585BB /* CleanCopy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = CleanCopy.entitlements; path = CleanCopy/CleanCopy.entitlements; sourceTree = SOURCE_ROOT; };
+		997544CE2D99350000C5567C /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -23,6 +25,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				997544CF2D99350000C5567C /* ServiceManagement.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +36,7 @@
 			isa = PBXGroup;
 			children = (
 				991F94F72D35F44100D585BB /* CleanCopy */,
+				997544CD2D99350000C5567C /* Frameworks */,
 				991F94F62D35F44100D585BB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -53,6 +57,14 @@
 				991F94FF2D35F44100D585BB /* CleanCopy.entitlements */,
 			);
 			path = CleanCopy;
+			sourceTree = "<group>";
+		};
+		997544CD2D99350000C5567C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				997544CE2D99350000C5567C /* ServiceManagement.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -253,10 +265,12 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = CleanCopy/CleanCopy.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = JPXYFX5LQB;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -277,7 +291,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = interimSolutions.CleanCopy;
+				PRODUCT_BUNDLE_IDENTIFIER = interimSolutions.CleanCopyTest;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
@@ -296,6 +310,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = CleanCopy/CleanCopy.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -319,7 +334,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = interimSolutions.CleanCopy;
+				PRODUCT_BUNDLE_IDENTIFIER = interimSolutions.CleanCopyTest;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;

@@ -14,5 +14,7 @@
 	<true/>
 	<key>com.apple.security.pasteboard.write</key>
 	<true/>
+    <key>com.apple.security.manage-login-items</key>
+    <true/>
 </dict>
 </plist>
