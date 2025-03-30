@@ -1,0 +1,49 @@
+# GitHub Actions Workflow for creating CleanCopy Releases
+
+name: Create Release
+
+# Controls when the workflow will run
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags starting with 'v' (e.g., v1.0.0, v1.1.0)
+
+jobs:
+  build-release:
+    name: Build and Release CleanCopy
+    runs-on: macos-latest # Use the latest macOS runner provided by GitHub
+
+    steps:
+      # 1. Check out the repository code at the specific tag
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Install create-dmg dependency (required by 'make package')
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      # 3. Build the Release configuration and package the DMG
+      #    Uses the updated Makefile which now accepts CONFIG=Release
+      #    The output DMG will be CleanCopy-Release.dmg
+      - name: Build and Package Release DMG
+        run: make package CONFIG=Release
+
+      # 4. Create a Draft GitHub Release and upload the DMG
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Use the tag name (e.g., v1.0.0) for the release name and tag
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          # Create the release as a draft, allowing manual review/editing before publishing
+          draft: true
+          # Set to false to automatically publish (not recommended initially)
+          # prerelease: false
+          # Specify the files to upload as release assets
+          files: |
+            CleanCopy-Release.dmg
+            dmg-resources/LICENSE.txt # Also include the license file
+        env:
+          # The GITHUB_TOKEN is automatically provided by GitHub Actions
+          # It's needed by the action to interact with the repository's releases
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

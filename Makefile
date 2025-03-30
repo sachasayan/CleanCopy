@@ -1,34 +1,37 @@
 # Makefile for CleanCopy project
 
+# Configuration (can be overridden: make CONFIG=Release)
+CONFIG ?= Debug
+
 APP_NAME=CleanCopy
 BUNDLE_ID=interimSolutions.CleanCopy # Ensure this matches your Info.plist PRODUCT_BUNDLE_IDENTIFIER
-BUILD_DIR=./build/Build/Products/Debug
+BUILD_DIR=./build/Build/Products/$(CONFIG) # Build directory depends on CONFIG
 APP_PATH=$(BUILD_DIR)/$(APP_NAME).app
-DMG_NAME=$(APP_NAME).dmg
+DMG_NAME=$(APP_NAME)-$(CONFIG).dmg # DMG name includes CONFIG
 RESOURCES_DIR=dmg-resources
 BACKGROUND_IMG=$(RESOURCES_DIR)/background.png
 LICENSE_FILE=$(RESOURCES_DIR)/LICENSE.txt
 
-# Default target: build the Debug configuration
+# Default target: build the default configuration
 all: build
 
-# Build the Debug configuration
+# Build the specified configuration (default: Debug)
 build:
-	@echo "Building $(APP_NAME) (Debug)..."
+	@echo "Building $(APP_NAME) ($(CONFIG))..."
 	@xcodebuild -project $(APP_NAME).xcodeproj \
 	           -scheme $(APP_NAME) \
-	           -configuration Debug \
+	           -configuration $(CONFIG) \
 	           -derivedDataPath ./build
 	@echo "Build finished. App located in $(BUILD_DIR)/"
 
-# Run the built application
+# Run the built application (uses default CONFIG unless specified: make run CONFIG=Release)
 run: build
-	@echo "Running $(APP_NAME)..."
+	@echo "Running $(APP_NAME) ($(CONFIG))..."
 	@open "$(APP_PATH)"
 
-# Package the application into a DMG
+# Package the application into a DMG (uses default CONFIG unless specified: make package CONFIG=Release)
 package: build
-	@echo "Packaging $(APP_NAME) into $(DMG_NAME)..."
+	@echo "Packaging $(APP_NAME) ($(CONFIG)) into $(DMG_NAME)..."
 	@# Ensure resources directory exists (optional, create-dmg might handle it)
 	@mkdir -p $(RESOURCES_DIR)
 	@# Check if create-dmg exists before running
@@ -36,8 +39,10 @@ package: build
 	@# Check if resource files exist (optional but good practice)
 	@[ -f "$(BACKGROUND_IMG)" ] || { echo >&2 "Warning: Background image not found at $(BACKGROUND_IMG)"; }
 	@[ -f "$(LICENSE_FILE)" ] || { echo >&2 "Warning: License file not found at $(LICENSE_FILE)"; }
+	@# Remove existing DMG if it exists to avoid create-dmg issues
+	@rm -f "$(DMG_NAME)"
 	@create-dmg \
-	  --volname "$(APP_NAME)" \
+	  --volname "$(APP_NAME) $(CONFIG)" \
 	  --background "$(BACKGROUND_IMG)" \
 	  --window-pos 200 120 \
 	  --window-size 600 280 \
@@ -50,12 +55,12 @@ package: build
 	  "$(APP_PATH)"
 	@echo "DMG created: $(DMG_NAME)"
 
-# Clean the build directory and DMG
+# Clean the build directory and all generated DMGs
 # Note: Does not remove the dmg-resources directory
 clean:
-	@echo "Cleaning build directory and DMG..."
+	@echo "Cleaning build directory and DMGs..."
 	@rm -rf ./build
-	@rm -f $(DMG_NAME)
+	@rm -f $(APP_NAME)-*.dmg # Remove all potential DMGs (Debug/Release)
 	@echo "Clean complete."
 
 # Reset: Clean build, remove preferences, clear first-launch flags, clear DerivedData, and attempt to remove from /Applications
