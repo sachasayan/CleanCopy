@@ -58,13 +58,16 @@ clean:
 	@rm -f $(DMG_NAME)
 	@echo "Clean complete."
 
-# Reset: Clean build, remove preferences, and attempt to remove from /Applications
+# Reset: Clean build, remove preferences, clear first-launch flags, and attempt to remove from /Applications
 # WARNING: Removing from /Applications might require sudo if not copied by the current user.
 # WARNING: This does NOT automatically unregister the Login Item from System Settings.
 reset: clean
 	@echo "Resetting application settings and removing from /Applications..."
-	@echo "Attempting to remove preferences: ~/Library/Preferences/$(BUNDLE_ID).plist"
+	@echo "Attempting to remove preferences file: ~/Library/Preferences/$(BUNDLE_ID).plist"
 	@rm -f ~/Library/Preferences/$(BUNDLE_ID).plist
+	@echo "Attempting to remove first-launch flags from UserDefaults..."
+	@defaults delete $(BUNDLE_ID) moveToApplicationsPromptShown 2>/dev/null || true
+	@defaults delete $(BUNDLE_ID) loginItemPromptShown 2>/dev/null || true
 	@echo "Attempting to remove application: /Applications/$(APP_NAME).app (may require sudo)"
 	@rm -rf "/Applications/$(APP_NAME).app" || echo "  -> Failed to remove /Applications/$(APP_NAME).app (permissions?)"
 	@echo "Reset complete. Note: Login Item may need manual removal from System Settings."
