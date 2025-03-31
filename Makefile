@@ -5,7 +5,7 @@ CONFIG ?= Debug
 
 APP_NAME=CleanCopy
 BUNDLE_ID=interimSolutions.CleanCopy # Ensure this matches your Info.plist PRODUCT_BUNDLE_IDENTIFIER
-BUILD_DIR=./build/Build/Products/$(CONFIG) # Build directory depends on CONFIG
+BUILD_DIR=./build/Build/Products/$(CONFIG)# Build directory depends on CONFIG
 APP_PATH=$(BUILD_DIR)/$(APP_NAME).app
 DMG_NAME=$(APP_NAME)-$(CONFIG).dmg # DMG name includes CONFIG
 RESOURCES_DIR=dmg-resources
@@ -26,7 +26,9 @@ build:
 
 # Run the built application (uses default CONFIG unless specified: make run CONFIG=Release)
 run: build
-	@echo "Running $(APP_NAME) ($(CONFIG))..."
+	@echo "Attempting to close any existing $(APP_NAME) instances..."
+	@killall "$(APP_NAME)" || true # Kill existing process, ignore error if not running
+	@echo "Running $(APP_NAME) ($(CONFIG)) from $(APP_PATH)"
 	@open "$(APP_PATH)"
 
 # Package the application into a DMG (uses default CONFIG unless specified: make package CONFIG=Release)
@@ -73,6 +75,7 @@ reset: clean
 	@echo "Attempting to remove first-launch flags from UserDefaults..."
 	@defaults delete $(BUNDLE_ID) moveToApplicationsPromptShown 2>/dev/null || true
 	@defaults delete $(BUNDLE_ID) loginItemPromptShownKey 2>/dev/null || true
+	@defaults delete $(BUNDLE_ID) notificationDisabledPromptShownKey 2>/dev/null || true # Added removal of new key
 	@echo "Attempting to remove Xcode DerivedData..."
 	@rm -rf ~/Library/Developer/Xcode/DerivedData
 	@echo "Attempting to remove application: /Applications/$(APP_NAME).app (may require sudo)"
