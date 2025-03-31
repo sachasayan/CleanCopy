@@ -18,64 +18,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up temporary keychain and import certificate
-      - name: Set up keychain and import certificate
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-          KEYCHAIN_NAME: build.keychain # Temporary keychain name
-          # Use the specific identity from the logs/certificate
-          SIGNING_IDENTITY: "Apple Development: sacha.sayan@gmail.com (2RH7R3YX2H)"
-        run: |
-          # Exit immediately if a command exits with a non-zero status.
-          # Treat unset variables as an error when substituting.
-          # Prevent errors in a pipeline from being masked.
-          set -eo pipefail
-
-          # Create temporary keychain
-          echo "Creating keychain: $KEYCHAIN_NAME"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-          # Make the temporary keychain the default
-          echo "Setting default keychain..."
-          security default-keychain -s "$KEYCHAIN_NAME"
-          # Unlock the temporary keychain
-          echo "Unlocking keychain..."
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-          # Set keychain timeout to prevent locking during build
-          echo "Setting keychain timeout..."
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
-
-          # Decode the base64 certificate
-          echo "Decoding certificate..."
-          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
-
-          # Import the certificate into the keychain, allowing codesign access
-          echo "Importing certificate..."
-          security import certificate.p12 -k "$KEYCHAIN_NAME" -P "$P12_PASSWORD" -T /usr/bin/codesign
-
-          # Explicitly allow codesign to access the imported private key without prompts
-          echo "Setting key partition list for identity: $SIGNING_IDENTITY"
-          # Corrected command: Use -l (label) instead of -D, remove -s (find)
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" -t private "$KEYCHAIN_NAME" -l "$SIGNING_IDENTITY"
-
-          # Set this identity as the preferred one for codesigning
-          echo "Setting identity preference..."
-          security set-identity-preference -n -s "$SIGNING_IDENTITY" "$KEYCHAIN_NAME"
-
-          # Clean up the certificate file
-          rm -f certificate.p12
-
-          echo "Keychain setup complete."
+      # 2. Import code signing certificate using Apple Actions
+      - name: Import Code Signing Certificates
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
+          p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
 
       # 3. Install create-dmg dependency (required by 'make package')
       - name: Install create-dmg
         run: brew install create-dmg
 
       # 4. Build the Release configuration, package, and sign the DMG
-      #    Makefile will now use the certificate imported into the temporary keychain
+      #    Override Xcode settings to force manual signing.
+      #    The identity should be picked up from the keychain set up by the previous step.
       - name: Build and Package Release DMG
-        run: make package CONFIG=Release
+        run: |
+          echo "Building and packaging with manual signing overrides..."
+          make package CONFIG=Release \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
 
       # 5. Create a Draft GitHub Release and upload the DMG
       - name: Create GitHub Release
@@ -96,10 +59,4 @@ jobs:
           # The GITHUB_TOKEN is automatically provided by GitHub Actions
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 6. Cleanup: Delete temporary keychain (optional, runs even if previous steps fail)
-      - name: Cleanup Keychain
-        if: always() # Ensure cleanup runs even if the build fails
-        run: |
-          KEYCHAIN_NAME=build.keychain
-          echo "Cleaning up keychain: $KEYCHAIN_NAME"
-          security delete-keychain "$KEYCHAIN_NAME" || echo "Keychain cleanup failed or keychain did not exist."
+      # 6. Cleanup step removed as apple-actions/import-codesign-certs handles its keychain.
