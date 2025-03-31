@@ -58,7 +58,6 @@ jobs:
             CleanCopy-Release.dmg
             dmg-resources/LICENSE.txt # Also include the license file
         env:
-          # The GITHUB_TOKEN is automatically provided by GitHub Actions
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
 
       # 6. Cleanup step removed as apple-actions/import-codesign-certs handles its keychain.
