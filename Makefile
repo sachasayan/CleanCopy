@@ -7,7 +7,7 @@ APP_NAME=CleanCopy
 BUNDLE_ID=interimSolutions.CleanCopy # Ensure this matches your Info.plist PRODUCT_BUNDLE_IDENTIFIER
 BUILD_DIR=./build/Build/Products/$(CONFIG)# Build directory depends on CONFIG
 APP_PATH=$(BUILD_DIR)/$(APP_NAME).app
-DMG_NAME=$(APP_NAME)-$(CONFIG).dmg # DMG name includes CONFIG
+DMG_NAME=$(APP_NAME)-$(CONFIG).dmg
 RESOURCES_DIR=dmg-resources
 BACKGROUND_IMG=$(RESOURCES_DIR)/background.png
 LICENSE_FILE=$(RESOURCES_DIR)/LICENSE.txt
@@ -33,7 +33,7 @@ run: build
 
 # Package the application into a DMG (uses default CONFIG unless specified: make package CONFIG=Release)
 package: build
-	@echo "Packaging $(APP_NAME) ($(CONFIG)) into $(DMG_NAME)..."
+	@echo "Packaging $(APP_NAME) ($(CONFIG)) into _$(DMG_NAME)_"
 	@# Ensure resources directory exists (optional, create-dmg might handle it)
 	@mkdir -p $(RESOURCES_DIR)
 	@# Check if create-dmg exists before running
@@ -53,7 +53,7 @@ package: build
 	  --hide-extension "$(APP_NAME).app" \
 	  --app-drop-link 425 120 \
 	  --eula "$(LICENSE_FILE)" \
-	  --outfile "$(DMG_NAME)" \
+	  "$(DMG_NAME)" \
 	  "$(APP_PATH)"
 	@echo "DMG created: $(DMG_NAME)"
 
