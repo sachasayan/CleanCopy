@@ -28,25 +28,40 @@ jobs:
           # Use the specific identity from the logs/certificate
           SIGNING_IDENTITY: "Apple Development: sacha.sayan@gmail.com (2RH7R3YX2H)"
         run: |
+          # Exit immediately if a command exits with a non-zero status.
+          # Treat unset variables as an error when substituting.
+          # Prevent errors in a pipeline from being masked.
+          set -eo pipefail
+
           # Create temporary keychain
+          echo "Creating keychain: $KEYCHAIN_NAME"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
           # Make the temporary keychain the default
+          echo "Setting default keychain..."
           security default-keychain -s "$KEYCHAIN_NAME"
           # Unlock the temporary keychain
+          echo "Unlocking keychain..."
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
           # Set keychain timeout to prevent locking during build
+          echo "Setting keychain timeout..."
           security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
 
           # Decode the base64 certificate
+          echo "Decoding certificate..."
           echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
 
           # Import the certificate into the keychain, allowing codesign access
+          echo "Importing certificate..."
           security import certificate.p12 -k "$KEYCHAIN_NAME" -P "$P12_PASSWORD" -T /usr/bin/codesign
 
           # Explicitly allow codesign to access the imported private key without prompts
-          # This is often necessary in CI environments
           echo "Setting key partition list for identity: $SIGNING_IDENTITY"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" -t private "$KEYCHAIN_NAME" -D "$SIGNING_IDENTITY" || echo "Warning: Setting key partition list failed. Check if SIGNING_IDENTITY env var matches the certificate's Common Name exactly."
+          # Corrected command: Use -l (label) instead of -D, remove -s (find)
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" -t private "$KEYCHAIN_NAME" -l "$SIGNING_IDENTITY"
+
+          # Set this identity as the preferred one for codesigning
+          echo "Setting identity preference..."
+          security set-identity-preference -n -s "$SIGNING_IDENTITY" "$KEYCHAIN_NAME"
 
           # Clean up the certificate file
           rm -f certificate.p12
@@ -86,4 +101,5 @@ jobs:
         if: always() # Ensure cleanup runs even if the build fails
         run: |
           KEYCHAIN_NAME=build.keychain
+          echo "Cleaning up keychain: $KEYCHAIN_NAME"
           security delete-keychain "$KEYCHAIN_NAME" || echo "Keychain cleanup failed or keychain did not exist."
