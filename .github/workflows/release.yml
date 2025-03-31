@@ -5,8 +5,10 @@ name: Create Release
 # Controls when the workflow will run
 on:
   push:
-    tags:
-      - 'v*' # Trigger on tags starting with 'v' (e.g., v1.0.0, v1.1.0)
+    branches:
+      - 'main'
+    # tags: # Uncomment to enable tagging releases
+    # - 'v*' # Trigger on tags starting with 'v' (e.g., v1.0.0, v1.1.0)
 
 jobs:
   build-release:
