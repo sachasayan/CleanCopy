@@ -53,7 +53,7 @@ package: build
 	  --hide-extension "$(APP_NAME).app" \
 	  --app-drop-link 425 120 \
 	  --eula "$(LICENSE_FILE)" \
-	  "$(DMG_NAME)" \
+	  --outfile "$(DMG_NAME)" \
 	  "$(APP_PATH)"
 	@echo "DMG created: $(DMG_NAME)"
 
