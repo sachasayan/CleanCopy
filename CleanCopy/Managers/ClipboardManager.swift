@@ -3,14 +3,18 @@ import AppKit
 import Combine
 import os
 
+@MainActor
 class ClipboardManager: NSObject, ObservableObject {
     @Published var isAutoConvertEnabled: Bool = true
     @Published var history: [ClipboardItem] = []
     
+    private let pasteboard: PasteboardService
     private var timer: Timer?
-    private var lastChangeCount: Int = NSPasteboard.general.changeCount
+    private var lastChangeCount: Int
     
-    override init() {
+    init(pasteboard: PasteboardService = NSPasteboard.general) {
+        self.pasteboard = pasteboard
+        self.lastChangeCount = pasteboard.changeCount
         super.init()
         if isAutoConvertEnabled {
             startMonitoring()
@@ -21,7 +25,7 @@ class ClipboardManager: NSObject, ObservableObject {
         guard isAutoConvertEnabled else { return }
         Logger.clipboard.info("Starting clipboard monitoring...")
         stopMonitoring()
-        lastChangeCount = NSPasteboard.general.changeCount
+        lastChangeCount = pasteboard.changeCount
         
         timer = Timer.scheduledTimer(withTimeInterval: Constants.Intervals.clipboardPolling, repeats: true) { [weak self] _ in
             self?.checkClipboard()
@@ -44,19 +48,18 @@ class ClipboardManager: NSObject, ObservableObject {
         }
     }
     
-    private func checkClipboard() {
-        let pb = NSPasteboard.general
-        let currentChangeCount = pb.changeCount
+    internal func checkClipboard() {
+        let currentChangeCount = pasteboard.changeCount
         guard currentChangeCount != lastChangeCount else { return }
         lastChangeCount = currentChangeCount
         
         // Focus only on items with a string representation
-        guard let content = pb.string(forType: .string) else { return }
+        guard let content = pasteboard.string(forType: .string) else { return }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         
         // Determine type based on properties
-        if pb.types?.contains(.rtf) == true || pb.types?.contains(.rtfd) == true {
+        if pasteboard.types?.contains(.rtf) == true || pasteboard.types?.contains(.rtfd) == true {
             updateHistory(with: trimmed, type: .richText)
         } else if let url = URL(string: trimmed), url.scheme != nil {
             updateHistory(with: trimmed, type: .url)
@@ -68,7 +71,7 @@ class ClipboardManager: NSObject, ObservableObject {
         }
     }
     
-    private func updateHistory(with content: String, type: ContentType, isCleanCopyResult: Bool = false) {
+    internal func updateHistory(with content: String, type: ContentType, isCleanCopyResult: Bool = false) {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
         let actualType = isCleanCopyResult ? .convertedLink : type
         
@@ -79,22 +82,19 @@ class ClipboardManager: NSObject, ObservableObject {
         
         let newItem = ClipboardItem(content: trimmedContent, type: actualType)
         
-        DispatchQueue.main.async {
-            self.history.insert(newItem, at: 0)
-            if self.history.count > Constants.historyMaxItems {
-                self.history.removeLast()
-            }
+        self.history.insert(newItem, at: 0)
+        if self.history.count > Constants.historyMaxItems {
+            self.history.removeLast()
         }
     }
     
     func copyToClipboard(_ item: ClipboardItem) {
-        let pb = NSPasteboard.general
-        pb.clearContents()
+        _ = pasteboard.clearContents()
         
         // If it's a file or image we just stored a placeholder, so we can't easily re-copy the actual data
         // For this version, we focus on re-copying text/URLs/RichText strings
-        pb.setString(item.content, forType: .string)
-        self.lastChangeCount = pb.changeCount
+        pasteboard.setString(item.content, forType: .string)
+        self.lastChangeCount = pasteboard.changeCount
         Logger.clipboard.info("Copied item from history to clipboard: \(item.type.rawValue)")
     }
     
@@ -108,7 +108,7 @@ class ClipboardManager: NSObject, ObservableObject {
     }
     
     func processClipboardContent() {
-        guard let clipboardString = NSPasteboard.general.string(forType: .string) else { return }
+        guard let clipboardString = pasteboard.string(forType: .string) else { return }
         let trimmedString = clipboardString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmedString), url.scheme != nil else { return }
         
@@ -116,7 +116,7 @@ class ClipboardManager: NSObject, ObservableObject {
         
         Task {
             do {
-                let title = try await TitleFetcher.fetchTitle(for: url)
+                let title = try await TitleFetcher.shared.fetchTitle(for: url)
                 await createRichTextLink(url: url, title: title)
             } catch {
                 Logger.clipboard.error("Failed to process URL: \(error.localizedDescription, privacy: .public)")
@@ -130,7 +130,7 @@ class ClipboardManager: NSObject, ObservableObject {
         
         Task {
             do {
-                let title = try await TitleFetcher.fetchTitle(for: url)
+                let title = try await TitleFetcher.shared.fetchTitle(for: url)
                 await createRichTextLink(url: url, title: title)
             } catch {
                 await handleProcessingError(error, for: url)
@@ -143,12 +143,11 @@ class ClipboardManager: NSObject, ObservableObject {
         let attributedString = NSMutableAttributedString(string: title)
         attributedString.addAttribute(.link, value: url.absoluteString, range: NSRange(location: 0, length: title.utf16.count))
         
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        let didWrite = pb.writeObjects([attributedString])
+        _ = pasteboard.clearContents()
+        let didWrite = pasteboard.writeObjects([attributedString])
         
         if didWrite {
-            self.lastChangeCount = pb.changeCount
+            self.lastChangeCount = pasteboard.changeCount
             Logger.clipboard.info("Clipboard updated with rich text link.")
             
             // Add to history as a conversion result
@@ -162,8 +161,8 @@ class ClipboardManager: NSObject, ObservableObject {
     
     @MainActor
     private func handleProcessingError(_ error: Error, for url: URL) {
-        if self.lastChangeCount == NSPasteboard.general.changeCount,
-           let currentString = NSPasteboard.general.string(forType: .string),
+        if self.lastChangeCount == pasteboard.changeCount,
+           let currentString = pasteboard.string(forType: .string),
            currentString.trimmingCharacters(in: .whitespacesAndNewlines) == url.absoluteString {
             createRichTextLink(url: url, title: url.absoluteString, notifySuccess: false)
         }

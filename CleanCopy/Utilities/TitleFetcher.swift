@@ -1,13 +1,21 @@
 import Foundation
 import os
 
-enum TitleFetcher {
-    static func fetchTitle(for url: URL) async throws -> String {
+class TitleFetcher {
+    static let shared = TitleFetcher()
+    
+    private let network: NetworkService
+    
+    init(network: NetworkService = URLSession.shared) {
+        self.network = network
+    }
+    
+    func fetchTitle(for url: URL) async throws -> String {
         var request = URLRequest(url: url)
         request.timeoutInterval = Constants.Intervals.networkTimeout
         Logger.network.info("Fetching title for: \(url.absoluteString, privacy: .public)")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await network.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
             return url.host ?? url.absoluteString
@@ -20,7 +28,7 @@ enum TitleFetcher {
         return parseTitle(from: html, fallback: url.host ?? url.absoluteString)
     }
     
-    private static func parseTitle(from html: String, fallback: String) -> String {
+    private func parseTitle(from html: String, fallback: String) -> String {
         do {
             let regex = try NSRegularExpression(pattern: Constants.Regex.titlePattern, options: .caseInsensitive)
             let nsRange = NSRange(html.startIndex..<html.endIndex, in: html)
