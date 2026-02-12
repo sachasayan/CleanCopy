@@ -1,0 +1,60 @@
+import SwiftUI
+import AppKit
+
+struct MainMenuView: View {
+    @ObservedObject var clipboardManager: ClipboardManager
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header Controls
+            HStack(spacing: 16) {
+                Button(action: {
+                    clipboardManager.processClipboardContent()
+                }) {
+                    Label("Convert URL", systemImage: "arrow.right.circle")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    Text("Auto")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Toggle("Auto Convert", isOn: $clipboardManager.isAutoConvertEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .controlSize(.mini)
+                }
+                .help("Toggle automatic URL conversion")
+                
+                Menu {
+                    Button("About") {
+                        clipboardManager.showAbout()
+                    }
+                    Divider()
+                    Button("Quit") {
+                        clipboardManager.stopMonitoring()
+                        NSApplication.shared.terminate(nil)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: 24, height: 24)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            
+            Divider()
+            
+            // History Section
+            HistoryView(clipboardManager: clipboardManager)
+        }
+        .frame(width: 350, height: 450)
+        .background(VisualEffectView(material: .menu, blendingMode: .behindWindow))
+    }
+}

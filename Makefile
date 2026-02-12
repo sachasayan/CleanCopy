@@ -83,5 +83,26 @@ reset: clean
 	@echo "Reset complete. Note: Login Item may need manual removal from System Settings."
 
 
+# Run unit tests
+test: build
+	@echo "Running Unit Tests..."
+	@xcodebuild test -project $(APP_NAME).xcodeproj \
+	                -scheme $(APP_NAME) \
+	                -destination 'platform=macOS' \
+	                -only-testing:$(APP_NAME)Tests \
+	                -derivedDataPath ./build
+
+# Run UI tests
+test-ui: build
+	@echo "Running UI Tests..."
+	@xcodebuild test -project $(APP_NAME).xcodeproj \
+	                -scheme $(APP_NAME) \
+	                -destination 'platform=macOS' \
+	                -only-testing:$(APP_NAME)UITests \
+	                -derivedDataPath ./build
+
+# Run all tests
+test-all: test test-ui
+
 # Phony targets are not files
-.PHONY: all build run package clean reset
+.PHONY: all build run package clean reset test test-ui test-all
