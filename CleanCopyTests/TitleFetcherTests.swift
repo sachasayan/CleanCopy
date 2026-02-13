@@ -41,4 +41,23 @@ struct TitleFetcherTests {
         
         #expect(title == "example.com")
     }
+
+    @Test("Decode HTML entities in title")
+    func testHTMLEntityDecoding() async throws {
+        let mockNetwork = MockNetworkService()
+        let html = "<html><head><title>CleanCopy &amp; Co. &ndash; Test &quot;Quotes&quot; &#8211; &lt;Link&gt;</title></head></html>"
+        mockNetwork.mockData = html.data(using: .utf8)
+        mockNetwork.mockResponse = HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+        
+        let fetcher = TitleFetcher(network: mockNetwork)
+        let title = try await fetcher.fetchTitle(for: URL(string: "https://example.com")!)
+        
+        // &amp; -> &
+        // &ndash; -> – (en dash)
+        // &quot; -> "
+        // &#8211; -> – (en dash)
+        // &lt; -> <
+        // &gt; -> >
+        #expect(title == "CleanCopy & Co. – Test \"Quotes\" – <Link>")
+    }
 }

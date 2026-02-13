@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AppKit
 
 class TitleFetcher {
     static let shared = TitleFetcher()
@@ -25,7 +26,8 @@ class TitleFetcher {
             return url.host ?? url.absoluteString
         }
         
-        return parseTitle(from: html, fallback: url.host ?? url.absoluteString)
+        let rawTitle = parseTitle(from: html, fallback: url.host ?? url.absoluteString)
+        return await decodeHTMLEntities(rawTitle)
     }
     
     private func parseTitle(from html: String, fallback: String) -> String {
@@ -42,5 +44,22 @@ class TitleFetcher {
             Logger.network.error("Regex error: \(error.localizedDescription, privacy: .public)")
         }
         return fallback
+    }
+
+    private func decodeHTMLEntities(_ string: String) async -> String {
+        guard string.contains("&") else { return string }
+
+        return await MainActor.run {
+            guard let data = string.data(using: .utf8) else { return string }
+            let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+                .documentType: NSAttributedString.DocumentType.html,
+                .characterEncoding: String.Encoding.utf8.rawValue
+            ]
+            
+            if let attributedString = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
+                return attributedString.string
+            }
+            return string
+        }
     }
 }
