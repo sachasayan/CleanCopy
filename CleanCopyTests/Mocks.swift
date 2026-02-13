@@ -41,6 +41,10 @@ class MockPasteboard: PasteboardService {
         }
         return true
     }
+    
+    func incrementChangeCount() {
+        changeCount += 1
+    }
 }
 
 class MockNetworkService: NetworkService {

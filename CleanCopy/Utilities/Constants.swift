@@ -10,7 +10,7 @@ enum Constants {
     }
     
     enum Intervals {
-        static let clipboardPolling: TimeInterval = 1.0
+        static let clipboardPolling: TimeInterval = 0.25
         static let networkTimeout: TimeInterval = 10.0
     }
     

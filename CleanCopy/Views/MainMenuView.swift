@@ -18,17 +18,6 @@ struct MainMenuView: View {
                 
                 Spacer()
                 
-                HStack(spacing: 8) {
-                    Text("Auto")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Toggle("Auto Convert", isOn: $clipboardManager.isAutoConvertEnabled)
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                        .controlSize(.mini)
-                }
-                .help("Toggle automatic URL conversion")
-                
                 Menu {
                     Toggle("Launch at Login", isOn: Binding(
                         get: { LoginItemManager.isEnabled },

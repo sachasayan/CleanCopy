@@ -5,24 +5,26 @@ import os
 
 @MainActor
 class ClipboardManager: NSObject, ObservableObject {
-    @Published var isAutoConvertEnabled: Bool = true
     @Published var history: [ClipboardItem] = []
     
     private let pasteboard: PasteboardService
+    private let titleFetcher: TitleFetcher
     private var timer: Timer?
     private var lastChangeCount: Int
     
-    init(pasteboard: PasteboardService = NSPasteboard.general) {
+    // State for 'double-copy' trigger
+    private var pendingContent: String?
+    private var consecutiveCopyCount: Int = 0
+    
+    init(pasteboard: PasteboardService = NSPasteboard.general, titleFetcher: TitleFetcher = .shared) {
         self.pasteboard = pasteboard
+        self.titleFetcher = titleFetcher
         self.lastChangeCount = pasteboard.changeCount
         super.init()
-        if isAutoConvertEnabled {
-            startMonitoring()
-        }
+        startMonitoring()
     }
     
     func startMonitoring() {
-        guard isAutoConvertEnabled else { return }
         Logger.clipboard.info("Starting clipboard monitoring...")
         stopMonitoring()
         lastChangeCount = pasteboard.changeCount
@@ -39,36 +41,45 @@ class ClipboardManager: NSObject, ObservableObject {
         timer = nil
     }
     
-    func toggleAutoConvert() {
-        isAutoConvertEnabled.toggle()
-        if isAutoConvertEnabled {
-            startMonitoring()
-        } else {
-            stopMonitoring()
-        }
-    }
-    
     internal func checkClipboard() {
         let currentChangeCount = pasteboard.changeCount
-        guard currentChangeCount != lastChangeCount else { return }
+        let delta = currentChangeCount - lastChangeCount
+        guard delta > 0 else { return }
         lastChangeCount = currentChangeCount
         
         // Focus only on items with a string representation
-        guard let content = pasteboard.string(forType: .string) else { return }
+        guard let content = pasteboard.string(forType: .string) else {
+            // Reset state if non-string content is copied
+            pendingContent = nil
+            consecutiveCopyCount = 0
+            return
+        }
+        
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         
-        // Determine type based on properties
+        if trimmed == pendingContent {
+            consecutiveCopyCount += delta
+        } else {
+            pendingContent = trimmed
+            consecutiveCopyCount = 1
+        }
+        
+        // Determine type for history
+        let type: ContentType
         if pasteboard.types?.contains(.rtf) == true || pasteboard.types?.contains(.rtfd) == true {
-            updateHistory(with: trimmed, type: .richText)
+            type = .richText
         } else if let url = URL(string: trimmed), url.scheme != nil {
-            updateHistory(with: trimmed, type: .url)
-            if isAutoConvertEnabled {
+            type = .url
+            // Trigger conversion ONLY if consecutive count >= 2
+            if consecutiveCopyCount >= 2 {
                 processClipboardContent()
             }
         } else {
-            updateHistory(with: trimmed, type: .text)
+            type = .text
         }
+        
+        updateHistory(with: trimmed, type: type)
     }
     
     internal func updateHistory(with content: String, type: ContentType, isCleanCopyResult: Bool = false) {
@@ -116,7 +127,7 @@ class ClipboardManager: NSObject, ObservableObject {
         
         Task {
             do {
-                let title = try await TitleFetcher.shared.fetchTitle(for: url)
+                let title = try await titleFetcher.fetchTitle(for: url)
                 await createRichTextLink(url: url, title: title)
             } catch {
                 Logger.clipboard.error("Failed to process URL: \(error.localizedDescription, privacy: .public)")
@@ -130,7 +141,7 @@ class ClipboardManager: NSObject, ObservableObject {
         
         Task {
             do {
-                let title = try await TitleFetcher.shared.fetchTitle(for: url)
+                let title = try await titleFetcher.fetchTitle(for: url)
                 await createRichTextLink(url: url, title: title)
             } catch {
                 await handleProcessingError(error, for: url)
@@ -148,6 +159,10 @@ class ClipboardManager: NSObject, ObservableObject {
         
         if didWrite {
             self.lastChangeCount = pasteboard.changeCount
+            // Reset trigger state after successful conversion
+            self.pendingContent = nil
+            self.consecutiveCopyCount = 0
+            
             Logger.clipboard.info("Clipboard updated with rich text link.")
             
             // Add to history as a conversion result
@@ -176,5 +191,11 @@ class ClipboardManager: NSObject, ObservableObject {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    deinit {
+        // Since stopMonitoring accesses @MainActor, we should ideally stop it before deinit
+        // But for cleanup, we can at least invalidate the timer
+        timer?.invalidate()
     }
 }
