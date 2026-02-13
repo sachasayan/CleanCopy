@@ -4,7 +4,7 @@
 CONFIG ?= Debug
 
 APP_NAME=CleanCopy
-BUNDLE_ID=interimSolutions.CleanCopy # Ensure this matches your Info.plist PRODUCT_BUNDLE_IDENTIFIER
+BUNDLE_ID=interimSolutions.CleanCopyTest
 BUILD_DIR=./build/Build/Products/$(CONFIG)# Build directory depends on CONFIG
 APP_PATH=$(BUILD_DIR)/$(APP_NAME).app
 DMG_NAME=$(APP_NAME)-$(CONFIG).dmg
@@ -74,8 +74,9 @@ reset: clean
 	@rm -f ~/Library/Preferences/$(BUNDLE_ID).plist
 	@echo "Attempting to remove first-launch flags from UserDefaults..."
 	@defaults delete $(BUNDLE_ID) moveToApplicationsPromptShown 2>/dev/null || true
-	@defaults delete $(BUNDLE_ID) loginItemPromptShownKey 2>/dev/null || true
-	@defaults delete $(BUNDLE_ID) notificationDisabledPromptShownKey 2>/dev/null || true # Added removal of new key
+	@defaults delete $(BUNDLE_ID) loginItemPromptShown 2>/dev/null || true
+	@defaults delete $(BUNDLE_ID) notificationDisabledPromptShown 2>/dev/null || true
+	@defaults delete $(BUNDLE_ID) isOnboardingCompleted 2>/dev/null || true
 	@echo "Attempting to remove Xcode DerivedData..."
 	@rm -rf ~/Library/Developer/Xcode/DerivedData
 	@echo "Attempting to remove application: /Applications/$(APP_NAME).app (may require sudo)"

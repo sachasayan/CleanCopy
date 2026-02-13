@@ -30,6 +30,17 @@ struct MainMenuView: View {
                 .help("Toggle automatic URL conversion")
                 
                 Menu {
+                    Toggle("Launch at Login", isOn: Binding(
+                        get: { LoginItemManager.isEnabled },
+                        set: { isEnabled in
+                            if isEnabled {
+                                LoginItemManager.register()
+                            } else {
+                                LoginItemManager.unregister()
+                            }
+                        }
+                    ))
+                    Divider()
                     Button("About") {
                         clipboardManager.showAbout()
                     }

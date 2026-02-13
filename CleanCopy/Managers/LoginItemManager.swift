@@ -3,6 +3,10 @@ import ServiceManagement
 import AppKit
 
 enum LoginItemManager {
+    static var isEnabled: Bool {
+        return SMAppService.mainApp.status == .enabled
+    }
+    
     static func promptIfNeeded() {
         let alreadyPrompted = UserDefaults.standard.bool(forKey: Constants.Keys.loginItemPromptShown)
         guard !alreadyPrompted else { return }
@@ -23,11 +27,17 @@ enum LoginItemManager {
             try SMAppService.mainApp.register()
         } catch {
             Logger.system.error("Failed to register as login item: \(error.localizedDescription)")
-            let errorAlert = NSAlert()
-            errorAlert.messageText = "Failed to Add Login Item"
-            errorAlert.informativeText = "Could not automatically add \(Constants.appName) as a login item."
-            errorAlert.addButton(withTitle: "OK")
-            errorAlert.runModal()
+            // If it's already registered, we might get an error depending on the exact state,
+            // but usually register() is idempotent or handles it. 
+            // However, we should be careful with UI alerts if this is called from a toggle.
+        }
+    }
+    
+    static func unregister() {
+        do {
+            try SMAppService.mainApp.unregister()
+        } catch {
+            Logger.system.error("Failed to unregister as login item: \(error.localizedDescription)")
         }
     }
 }

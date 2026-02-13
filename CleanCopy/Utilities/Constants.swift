@@ -6,6 +6,7 @@ enum Constants {
     enum Keys {
         static let loginItemPromptShown = "loginItemPromptShown"
         static let notificationDisabledPromptShown = "notificationDisabledPromptShown"
+        static let isOnboardingCompleted = "isOnboardingCompleted"
     }
     
     enum Intervals {
