@@ -31,6 +31,22 @@ run: build
 	@echo "Running $(APP_NAME) ($(CONFIG)) from $(APP_PATH)"
 	@open "$(APP_PATH)"
 
+# Deploy the built application to /Applications (does NOT trigger a build)
+deploy:
+	@echo "Deploying $(APP_NAME) ($(CONFIG)) to /Applications..."
+	@echo "Attempting to close any existing $(APP_NAME) instances..."
+	@killall "$(APP_NAME)" 2>/dev/null || true
+	@echo "Removing existing $(APP_NAME).app from /Applications..."
+	@rm -rf "/Applications/$(APP_NAME).app" || echo "  -> Failed to remove /Applications/$(APP_NAME).app (permissions?)"
+	@echo "Copying $(APP_NAME).app to /Applications using ditto..."
+	@if [ -d "$(APP_PATH)" ]; then \
+		ditto "$(APP_PATH)" "/Applications/$(APP_NAME).app" || echo "  -> Failed to copy to /Applications (permissions?)"; \
+		echo "Deployment complete."; \
+	else \
+		echo "Error: $(APP_PATH) not found. Did you forget to run 'make build'?"; \
+		exit 1; \
+	fi
+
 # Package the application into a DMG (uses default CONFIG unless specified: make package CONFIG=Release)
 package: build
 	@echo "Packaging $(APP_NAME) ($(CONFIG)) into _$(DMG_NAME)_"
@@ -106,4 +122,4 @@ test-ui: build
 test-all: test test-ui
 
 # Phony targets are not files
-.PHONY: all build run package clean reset test test-ui test-all
+.PHONY: all build run deploy package clean reset test test-ui test-all
