@@ -14,7 +14,7 @@ enum Constants {
         static let networkTimeout: TimeInterval = 10.0
     }
     
-    static let historyMaxItems = 50
+    static let historyMaxItems = 12
     
     enum Regex {
         static let titlePattern = "<title[^>]*>(.*?)</title>"

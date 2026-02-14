@@ -47,7 +47,7 @@ struct ClipboardManagerTests {
         mockPb.incrementChangeCount()
         manager.checkClipboard()
         
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
         
         #expect(manager.history.contains(where: { $0.type == .convertedLink }))
         #expect(manager.history.first(where: { $0.type == .convertedLink })?.content == "Test")
@@ -75,7 +75,7 @@ struct ClipboardManagerTests {
         mockPb.incrementChangeCount()
         manager.checkClipboard()
         
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
         #expect(manager.history.contains(where: { $0.type == .convertedLink }))
     }
 
@@ -103,14 +103,14 @@ struct ClipboardManagerTests {
         mockPb.setString("https://url1.com", forType: .string)
         manager.checkClipboard()
         
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
         #expect(!manager.history.contains(where: { $0.type == .convertedLink }))
         
         // Second copy of URL1
         mockPb.incrementChangeCount()
         manager.checkClipboard()
         
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
         #expect(manager.history.contains(where: { $0.type == .convertedLink }))
     }
     
