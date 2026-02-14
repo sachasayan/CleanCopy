@@ -44,6 +44,7 @@ struct MainMenuView: View {
                         .foregroundColor(.secondary)
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .frame(width: 24, height: 24)
             }
             .padding(.horizontal, 16)
