@@ -6,8 +6,18 @@ struct CleanCopyApp: App {
     @StateObject private var clipboardManager = ClipboardManager()
 
     var body: some Scene {
-        MenuBarExtra(Constants.appName, systemImage: "link.circle") {
+        MenuBarExtra {
             MainMenuView(clipboardManager: clipboardManager)
+        } label: {
+            Group {
+                switch clipboardManager.status {
+                case .idle:
+                    Image(systemName: "link.circle")
+                case .success:
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                }
+            }
         }
         .menuBarExtraStyle(.window)
     }

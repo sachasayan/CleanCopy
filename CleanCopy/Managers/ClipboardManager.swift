@@ -4,8 +4,15 @@ import Combine
 import os
 
 @MainActor
+enum ConversionStatus {
+    case idle
+    case success
+}
+
+@MainActor
 class ClipboardManager: NSObject, ObservableObject {
     @Published var history: [ClipboardItem] = []
+    @Published var status: ConversionStatus = .idle
     
     private let pasteboard: PasteboardService
     private let titleFetcher: TitleFetcher
@@ -175,6 +182,8 @@ class ClipboardManager: NSObject, ObservableObject {
             self.pendingContent = nil
             self.consecutiveCopyCount = 0
             
+            self.status = .success
+            
             Logger.clipboard.info("Clipboard updated with rich text link.")
             
             // Add to history as a conversion result
@@ -183,11 +192,18 @@ class ClipboardManager: NSObject, ObservableObject {
             if notifySuccess {
                 NotificationManager.shared.sendSuccess(title: title)
             }
+            
+            // Revert to idle after delay
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+                self.status = .idle
+            }
         }
     }
     
     @MainActor
     private func handleProcessingError(_ error: Error, for url: URL) {
+        self.status = .idle
         if self.lastChangeCount == pasteboard.changeCount,
            let currentString = pasteboard.string(forType: .string),
            currentString.trimmingCharacters(in: .whitespacesAndNewlines) == url.absoluteString {
