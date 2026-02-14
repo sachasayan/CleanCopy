@@ -40,16 +40,27 @@ class ClipboardManager: NSObject, ObservableObject {
         timer?.invalidate()
         timer = nil
     }
-    
     internal func checkClipboard() {
         let currentChangeCount = pasteboard.changeCount
         let delta = currentChangeCount - lastChangeCount
+        
+        // GATEKEEPER: Early exit if no changes have occurred.
+        // This avoids any expensive data reading or type checking.
         guard delta > 0 else { return }
+        
         lastChangeCount = currentChangeCount
         
-        // Focus only on items with a string representation
+        // Performance: Quick check of names before reading actual string data
+        let pbTypes = pasteboard.types ?? []
+        guard pbTypes.contains(.string) || pbTypes.contains(.URL) else {
+            // Reset state if non-textual content is copied
+            pendingContent = nil
+            consecutiveCopyCount = 0
+            return
+        }
+        
+        // Now it's safe and necessary to read the string
         guard let content = pasteboard.string(forType: .string) else {
-            // Reset state if non-string content is copied
             pendingContent = nil
             consecutiveCopyCount = 0
             return
@@ -73,7 +84,7 @@ class ClipboardManager: NSObject, ObservableObject {
             type = .url
             // Trigger conversion ONLY if consecutive count >= 2
             if consecutiveCopyCount >= 2 {
-                processClipboardContent()
+                processClipboardContent(content: trimmed)
             }
         } else {
             type = .text
@@ -118,8 +129,9 @@ class ClipboardManager: NSObject, ObservableObject {
         history.removeAll(where: { $0.id == item.id })
     }
     
-    func processClipboardContent() {
-        guard let clipboardString = pasteboard.string(forType: .string) else { return }
+    func processClipboardContent(content: String? = nil) {
+        // Use provided content if available to avoid redundant pasteboard fetch
+        guard let clipboardString = content ?? pasteboard.string(forType: .string) else { return }
         let trimmedString = clipboardString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmedString), url.scheme != nil else { return }
         
